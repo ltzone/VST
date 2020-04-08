@@ -638,8 +638,7 @@ progs64: _CoqProject  $(PROGS64_FILES:%.v=progs64/%.vo)
 # $(CC_TARGET): compcert/make
 #	(cd compcert; ./make)
 
-LIST_SOLVERS=$(filter-out floyd/Zlength_solver_base.v, $(wildcard floyd/list_solver*.v))
-BENCHMARK_FILES=$(patsubst floyd/list_solver%.v, floyd/list_benchmark%.v, $(LIST_SOLVERS))
+BENCHMARK_FILES=floyd/list_benchmark.v floyd/list_benchmark_old.v
 
 benchmark: temp $(BENCHMARK_FILES:%.v=%.out1) \
                 $(BENCHMARK_FILES:%.v=%.out2) \
