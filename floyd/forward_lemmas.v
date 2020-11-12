@@ -36,7 +36,7 @@ Lemma semax_func_cons_ext_vacuous:
          ((id, vacuous_funspec (External ef argsig retsig cc)) :: G').
 Proof.
 intros.
-eapply semax_func_cons_ext with (b0:=b); try reflexivity; auto.
+eapply semax_func_cons_ext with (b:=b); try reflexivity; auto.
 *
  clear.
  forget 1%positive as i.
@@ -393,7 +393,7 @@ Lemma forward_setx':
                             subst id (`old) P)).
 Proof.
 intros.
-eapply semax_pre; try apply (semax_set_forward Delta P id e).
+eapply semax_pre; try apply (semax_set_forward cs Espec Delta P id e).
 + eapply derives_trans ; [ | apply now_later].
    apply andp_left2; apply andp_right; auto.
 Qed.
@@ -475,7 +475,7 @@ auto.
 }
 subst n'.
 eapply semax_pre; [ | eassumption].
-apply andp_left2.
+apply andp_left2. simpl. intros.
 apply andp_left2.
 apply andp_left2.
 auto.
@@ -591,7 +591,7 @@ intros.
 apply semax_loop with (Q':= (EX a:A, PQR a)).
 *
  apply extract_exists_pre; intro a.
- apply semax_seq with (Q0 := PROPx (typed_true (typeof test) (v a) :: P a) (LOCALx (Q a) (SEPx (R a)))).
+ apply semax_seq with (Q := PROPx (typed_true (typeof test) (v a) :: P a) (LOCALx (Q a) (SEPx (R a)))).
  apply semax_pre with (tc_expr Delta (Eunop Onotbool test (Tint I32 Signed noattr)) 
                                         && (local (`(eq (v a)) (eval_expr test)) && (PROPx (P a) (LOCALx (Q a) (SEPx (R a))))));
    [ | apply semax_ifthenelse; auto].

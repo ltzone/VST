@@ -1953,6 +1953,13 @@ Qed.
 Ltac Intro_prop :=
 autorewrite with gather_prop;
 match goal with
+  | |- SeparationLogicAsLogic.AuxDefs.semax _ ?PQR _ _ =>
+  first [ is_evar PQR; fail 1
+        | simple apply semax_extract_PROP; fancy_intros false
+        | move_from_SEP' PQR;
+          simple apply semax_extract_PROP; fancy_intros false
+        | flatten_in_SEP PQR
+        ]
  | |- semax _ ?PQR _ _ =>
      first [ is_evar PQR; fail 1
             | simple apply semax_extract_PROP; fancy_intros false
@@ -1994,6 +2001,8 @@ Ltac Intro a :=
   | |- ?A |-- ?B =>
      let z := fresh "z" in pose (z:=B); change (A|--z); Intro'' a; subst z
   | |- semax _ _ _ _ =>
+     Intro'' a
+  | |- SeparationLogicAsLogic.AuxDefs.semax _ _ _ _ =>
      Intro'' a
   end.
 

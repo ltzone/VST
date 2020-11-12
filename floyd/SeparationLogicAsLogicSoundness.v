@@ -234,7 +234,7 @@ End DeepEmbeddedSoundness.
 (*                                                      *)
 (********************************************************)
 
-Module MainTheorem: MAIN_THEOREM_STATEMENT.
+Module MainTheorem<: MAIN_THEOREM_STATEMENT.
 
 Module DeepEmbedded := DeepEmbedded (VericDef) (VericMinimumSeparationLogic).
 
