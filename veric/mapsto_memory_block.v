@@ -838,7 +838,7 @@ Proof.
   if_tac.
 *
   normalize.
-  rewrite distrib_orp_sepcon, !distrib_orp_sepcon2;
+  rewrite distrib_orp_sepcon. rewrite !distrib_orp_sepcon2;
   repeat apply orp_left;
   rewrite ?sepcon_andp_prop1;  repeat (apply prop_andp_left; intro);
   rewrite ?sepcon_andp_prop2;  repeat (apply prop_andp_left; intro);
@@ -852,6 +852,71 @@ Proof.
   apply nonlock_permission_bytes_overlap; auto.
   exists (b, Ptrofs.unsigned i); repeat split; omega.
 Qed.
+
+
+
+Lemma join_necR_aux: forall n x y z x' y' z',
+  relation_power n age x x' -> 
+  relation_power n age y y' -> join x y z -> join x' y' z' -> 
+  relation_power n age z z'.
+Proof.
+  intros n. induction n.
+  { intros. simpl in *. subst. eapply join_eq;eassumption. }
+  intros.
+  
+  apply power_age_age1 in H. simpl in H.
+  destruct (age1 x) as [x''|] eqn:Ex.
+  2:{ inversion H. }
+  apply power_age_age1 in H0. simpl in H0.
+  destruct (age1 y) as [y''|] eqn:Ey.
+  2:{ inversion H0. }
+  pose proof @age1_join _ _ _ _ _ _ _ _ H1 Ex.
+  destruct H3 as [y''' [z'' [H3 [? ?]]]].
+  assert (y'' = y''').
+  { hnf in H4. congruence. } subst y'''.
+  exists z''. split.
+  * auto.
+  * eapply IHn;try eassumption;apply power_age_age1;auto.
+Qed.
+  
+
+Lemma relation_power_level: forall n x y,
+   relation_power n age x y -> ((level x) = n + (level y))%nat.
+Proof.
+  intros n. induction n;intros.
+  { simpl. hnf in H. f_equal. auto. }
+  simpl in H. destruct H as [x' [? ?]].
+  apply IHn in H0. simpl. rewrite <- H0.
+  apply age_level. auto.
+Qed.
+
+Lemma join_necR_same_level: forall m n x y x' y',
+  relation_power m age x x' -> 
+  relation_power n age y y' -> level x = level y -> level x' = level y' -> m = n.
+Proof.
+  intros. apply relation_power_level in H. apply relation_power_level in H0.
+  omega.
+Qed.
+
+Lemma join_necR: forall x y z x' y' z',
+  necR x x' -> 
+  necR y y' -> join x y z -> join x' y' z' -> 
+  necR z z'.
+Proof.
+  intros.
+  pose proof join_level _ _ _ H1 as [E1 E2].
+  pose proof join_level _ _ _ H2 as [E3 E4].
+  apply necR_power_age in H. apply necR_power_age in H0.
+  destruct H as [n1 H], H0 as [n2 H0].
+  assert (n1 = n2).
+  { pose proof join_necR_same_level _ _ _ _ _ _ H H0.
+    apply H3;congruence. }
+  subst n2.
+  pose proof join_necR_aux _ _ _ _ _ _ _ H H0 H1 H2.
+  apply necR_power_age. exists n1. auto.
+Qed.
+
+
 
 Lemma memory_block_conflict: forall sh n m p,
   nonunit sh ->
