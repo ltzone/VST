@@ -878,6 +878,31 @@ Proof.
   * auto.
   * eapply IHn;try eassumption;apply power_age_age1;auto.
 Qed.
+
+(* Lemma join_necR_aux2: forall n x y z x' y',
+  relation_power n age x x' -> 
+  relation_power n age y y' -> join x y z ->
+  exists z', join x' y' z' /\ relation_power n age z z'.
+Proof.
+  intros n. induction n.
+  { intros. simpl in *. subst.
+    exists z. split;auto. }
+  intros.  
+  apply power_age_age1 in H. simpl in H.
+  destruct (age1 x) as [x''|] eqn:Ex.
+  2:{ inversion H. }
+  apply power_age_age1 in H0. simpl in H0.
+  destruct (age1 y) as [y''|] eqn:Ey.
+  2:{ inversion H0. }
+  pose proof @age1_join _ _ _ _ _ _ _ _ H1 Ex.
+  destruct H2 as [y''' [z'' [H3 [? ?]]]].
+  assert (y'' = y''').
+  { hnf in H4. congruence. } subst y'''.
+  Search age join.
+  exists z''. split.
+  * auto.
+  * eapply IHn;try eassumption;apply power_age_age1;auto.
+Qed. *)
   
 
 Lemma relation_power_level: forall n x y,
@@ -914,6 +939,441 @@ Proof.
   subst n2.
   pose proof join_necR_aux _ _ _ _ _ _ _ H H0 H1 H2.
   apply necR_power_age. exists n1. auto.
+Qed.
+
+Lemma join_necR_2: forall x y z x' y',
+  necR x x' -> 
+  necR y y' -> join x y z -> level x' = level y' ->
+  exists z', join x' y' z' /\ necR z z'.
+Proof.
+  intros.
+  epose proof nec_join H1 H.
+  destruct H3 as [y'' [z' [? [? ?]]]].
+  exists z'. split;auto.
+  assert (y'' = y').
+  { apply (necR_linear' H4 H0).
+    apply join_level in H1. apply join_level in H3. omega. }
+  subst. auto.
+Qed.
+
+
+Ltac unfold_Byte_const :=
+  unfold Byte.max_unsigned in *;
+  unfold Byte.modulus in *;
+  unfold two_power_pos in *;
+  unfold Byte.wordsize in *; simpl in *;
+  repeat (unfold Int.modulus in *; unfold Int.wordsize in *;
+  unfold Wordsize_32.wordsize in *; unfold Int.half_modulus in *;
+  unfold two_power_nat, two_power_pos in *;
+  unfold Int.max_unsigned, Int.min_signed, Int.max_signed in *; simpl in *).
+
+
+Lemma Byte_unsigned_inj: forall i1 i2,
+  Byte.unsigned i1 = Byte.unsigned i2 -> i1 = i2.
+Proof.
+  intros.
+  eapply Byte.same_bits_eq; intros.
+  destruct i1, i2. simpl in *. unfold Byte.testbit.
+  unfold Byte.unsigned. simpl. rewrite H. reflexivity.
+Qed.
+
+Lemma decode_byte_deterministic: forall i1 i2,
+  (* decode_val Mint8signed (Byte i1 :: nil) <> Vundef -> *)
+  decode_val Mint8signed (Byte i1 :: nil) = decode_val Mint8signed (Byte i2 :: nil) ->
+  i1 = i2.
+Proof.
+  intros. unfold decode_val in *.
+  simpl in H. apply Vint_inj in H.
+  unfold decode_int in H. unfold rev_if_be in H.
+  destruct (Archi.big_endian) eqn:Ebe.
+  { simpl in H. rewrite !Z.add_0_r in H.
+    pose proof Byte.unsigned_range i1.
+    pose proof Byte.unsigned_range i2.
+    remember (Byte.unsigned i1) as v1.
+    remember (Byte.unsigned i2) as v2.
+    assert ( - two_p (8 - 1) <= 
+        Int.signed (Int.repr (v1 - (two_p (8 - 1)))) <= two_p (8 - 1) - 1 ).
+    { unfold_Byte_const.
+      rewrite Int.signed_repr_eq. unfold_Byte_const.
+      destruct zlt.
+      - Z.div_mod_to_equations. omega.
+      - Z.div_mod_to_equations. omega.
+    }
+    pose proof sign_ext_inrange _ _ H2.
+    assert ( - two_p (8 - 1) <= 
+        Int.signed (Int.repr (v2 - (two_p (8 - 1)))) <= two_p (8 - 1) - 1 ).
+    { unfold_Byte_const.
+      rewrite Int.signed_repr_eq. unfold_Byte_const.
+      destruct zlt.
+      - Z.div_mod_to_equations. omega.
+      - Z.div_mod_to_equations. omega.
+    }
+    pose proof sign_ext_inrange _ _ H4.
+    assert (v1 - two_p (8 - 1) = v2 - two_p (8 - 1)).
+    { rewrite <- (Int.signed_repr (v1 - two_p (8 - 1)));try (unfold_Byte_const; omega).
+      rewrite <- (Int.signed_repr (v2 - two_p (8 - 1))); try (unfold_Byte_const; omega).
+      rewrite <- H3. rewrite <- H5. f_equal.
+      admit. }
+    apply Byte_unsigned_inj. rewrite <- Heqv1, <- Heqv2. omega.
+  }
+  { simpl in H. rewrite !Z.add_0_r in H.
+    pose proof Byte.unsigned_range i1.
+    pose proof Byte.unsigned_range i2.
+    remember (Byte.unsigned i1) as v1.
+    remember (Byte.unsigned i2) as v2.
+    assert ( - two_p (8 - 1) <= 
+        Int.signed (Int.repr (v1 - (two_p (8 - 1)))) <= two_p (8 - 1) - 1 ).
+    { unfold_Byte_const.
+      rewrite Int.signed_repr_eq. unfold_Byte_const.
+      destruct zlt.
+      - Z.div_mod_to_equations. omega.
+      - Z.div_mod_to_equations. omega.
+    }
+    pose proof sign_ext_inrange _ _ H2.
+    assert ( - two_p (8 - 1) <= 
+        Int.signed (Int.repr (v2 - (two_p (8 - 1)))) <= two_p (8 - 1) - 1 ).
+    { unfold_Byte_const.
+      rewrite Int.signed_repr_eq. unfold_Byte_const.
+      destruct zlt.
+      - Z.div_mod_to_equations. omega.
+      - Z.div_mod_to_equations. omega.
+    }
+    pose proof sign_ext_inrange _ _ H4.
+    assert (v1 - two_p (8 - 1) = v2 - two_p (8 - 1)).
+    { rewrite <- (Int.signed_repr (v1 - two_p (8 - 1)));try (unfold_Byte_const; omega).
+      rewrite <- (Int.signed_repr (v2 - two_p (8 - 1))); try (unfold_Byte_const; omega).
+      rewrite <- H3. rewrite <- H5. f_equal.
+      admit. }
+    apply Byte_unsigned_inj. rewrite <- Heqv1, <- Heqv2. omega.
+  }
+Admitted.
+
+
+Lemma bm_unique: forall (bm1 bm2 : list memval) 
+  (bm: AV.address) (m: memory_chunk) (v: val),
+    Datatypes.length bm1 = size_chunk_nat m ->
+      decode_val m bm1 = v -> 
+    Datatypes.length bm2 = size_chunk_nat m ->
+      decode_val m bm2 = v -> (align_chunk m | snd bm) ->
+      v <> Vundef ->
+    bm1 = bm2.
+Proof.
+  intros.
+  pose proof decode_val_undef.
+  destruct m; simpl in *;
+    unfold size_chunk_nat in *; unfold size_chunk in *.
+  { destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    rewrite <- H0 in H2.
+    destruct m, m0; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    { apply decode_byte_deterministic in H2. subst. reflexivity. }
+  }
+  { destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    rewrite <- H0 in H2.
+    destruct m, m0; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    f_equal. f_equal.
+    unfold decode_val in H2. simpl in H2.
+    apply Vint_inj in H2. admit. }
+  { destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    rewrite <- H0 in H2.
+    destruct m, m0; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    destruct m1, m2; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    unfold decode_val in H2. simpl in H2.
+    apply Vint_inj in H2. admit. }
+  { destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    rewrite <- H0 in H2.
+    destruct m, m0; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    destruct m1, m2; try solve [inv H2; try reflexivity; 
+      unfold decode_val in *; simpl in *; try congruence].
+    unfold decode_val in H2. simpl in H2.
+    apply Vint_inj in H2. admit. }
+  { destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+    destruct bm1; try solve [inv H].
+    destruct bm2; try solve [inv H1].
+
+    admit.
+  }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+Admitted.
+
+
+
+Lemma address_mapsto_level_precise: forall m v sh bm r r' rw,
+  address_mapsto m v sh bm r -> 
+  address_mapsto m v sh bm r' ->
+  (level r = level r')%nat -> 
+  joins r rw -> joins r' rw -> v <> Vundef ->
+  r = r'.
+Proof.
+  intros. rename H2 into Hjoin1. rename H3 into Hjoin2.
+  rename H4 into Hv.
+  (* pose proof address_mapsto_VALspec_range _ _ _ _ _ H as E1.
+  pose proof address_mapsto_VALspec_range _ _ _ _ _ H0 as E2. *)
+  unfold address_mapsto in H.
+  simpl in H. destruct H as [bm1 [[Hv1 H]  Hg1]].
+  unfold address_mapsto in H0.
+  simpl in H0. destruct H0 as [bm2 [[Hv2 H0]  Hg2]].
+  assert (forall l : AV.address, r @ l = r' @ l).
+  { intros.
+    pose proof H l. pose proof H0 l.
+    if_tac in H2.
+    { destruct H2 as [rsh1 H8].
+      destruct H3 as [rsh2 H9].
+      rewrite H8 in *. rewrite H9 in *.
+      assert (rsh1 = rsh2).
+      { extensionality. congruence. } subst rsh2.
+      { f_equal.
+        assert (bm1 = bm2).
+        { destruct Hv1 as [? [? ?]].
+          destruct Hv2 as [? [? ?]].
+          eapply bm_unique;try eassumption. }
+        subst. reflexivity.
+      }
+    }
+    { destruct Hjoin1 as [r1 Hjoin1].
+      destruct Hjoin2 as [r2 Hjoin2].
+      pose proof resource_at_join _ _ _ l Hjoin1.
+      pose proof resource_at_join _ _ _ l Hjoin2.
+      pose proof H2 _ _ H5.
+      pose proof H3 _ _ H6.
+      rewrite H7 in *. rewrite H8 in *.
+      pose proof empty_NO _ H2.
+      pose proof empty_NO _ H3.
+      destruct H9, H10;auto; try congruence.
+      { destruct H10 as [k [pds H10]].
+        inv H5; inv H6; try congruence. }
+      { destruct H9 as [k [pds H9]].
+        inv H5; inv H6; try congruence. }
+      { destruct H9 as [k [pds H9]].
+        destruct H10 as [k' [pds' H10]].
+        inv H5; inv H6; try congruence. }
+    }
+  }
+  eapply rmap_ext;auto.
+  destruct Hjoin1 as [r1 Hjoin1].
+  destruct Hjoin2 as [r2 Hjoin2].
+  pose proof ghost_of_join _ _ _ Hjoin1.
+  pose proof ghost_of_join _ _ _ Hjoin2.
+  pose proof Hg1 _ _ H3. pose proof Hg2 _ _ H4.
+  rewrite H5 in *. rewrite H6 in *.
+  eapply same_identity; auto.
+  * eauto.
+  * eauto.
+Qed.
+
+Lemma nonlock_permission_bytes_level_precise: forall sh p n r r' rw,
+  nonlock_permission_bytes sh p n r ->
+  nonlock_permission_bytes sh p n r' ->
+  (level r = level r')%nat -> 
+  joins r rw -> joins r' rw ->
+  r = r'.
+Proof.
+Admitted.
+
+Lemma necR_split_1n: forall n r1 r2,
+  relation_power (S n) age r1 r2 -> exists y, age r1 y /\ necR y r2.
+Proof.
+  intros n. induction n.
+  - intros. destruct H as [?[? ?]]. exists x. split;auto.
+    apply necR_power_age. exists 0%nat. auto.
+  - intros. destruct H as [?[? ?]].
+    apply IHn in H0. exists x. split;auto.
+    destruct H0 as [? [? ?]].
+    eapply rt_trans;[|apply H1]. apply rt_step. auto.
+Qed.
+
+Lemma address_mapsto_necR_precise: forall m v sh bm n r r' rw rw', 
+  address_mapsto m v sh bm r ->
+  address_mapsto m v sh bm r' ->
+  (level r = n + level r')%nat ->
+  joins r rw -> joins r' rw' -> necR rw rw' -> v <> Vundef ->
+  necR r r'.
+Proof.
+  intros.
+  rename H2 into Hjoin1.
+  rename H3 into Hjoin2. rename H4 into Hrw.
+  rename H5 into Hv.
+  apply necR_power_age. exists n. 
+  revert r r' rw rw' H H0 H1 Hjoin1 Hjoin2 Hrw.
+  induction n;intros.
+  + simpl.
+    assert (rw = rw').
+    { destruct Hjoin1. destruct Hjoin2.
+      apply join_level  in H2. apply join_level in H3.
+      destruct H2, H3.
+      assert (level rw = level rw') by omega.
+      pose proof necR_refl rw.
+      pose proof necR_linear' H7 Hrw H6. auto. }
+    subst rw'.
+    eapply address_mapsto_level_precise;eassumption.
+  + simpl in H1.
+    pose proof levelS_age1 _ _ H1. destruct H2 as [r'' H2].
+    exists r''. split;auto.
+    (* find rw'' *)
+    destruct Hjoin1 as [ra Hjoin1].
+    pose proof join_level _ _ _ Hjoin1.
+    destruct Hjoin2 as [ra' Hjoin2].
+    pose proof join_level _ _ _ Hjoin2.
+    pose proof age_level _ _ H2.
+    apply clos_rt_rt1n in Hrw.
+    inv Hrw. { omega. }
+    apply IHn with (rw:=y) (rw':=rw');auto.
+    2:{ apply age_level in H2. rewrite H1 in H2. inv H2. auto. }
+    { assert (necR r r'').
+      { constructor. apply H2. }
+      apply pred_nec_hereditary with (a:= r);auto. }
+    { pose proof join_necR_2 _ _ _ _ _ (rt_step _ _ _ _ H2) (rt_step _ _ _ _ H6) Hjoin1.
+      destruct H8 as [ra'' [? ?]]. { pose proof age_level _ _ H6. omega. }
+      exists ra''. auto. }
+    { exists ra'. auto. }
+    { apply clos_rt1n_rt. auto. }
+Qed.
+
+Lemma nonlock_permission_bytes_necR_precise: 
+forall sh p n m r r' rw rw', 
+  nonlock_permission_bytes sh p n r ->
+  nonlock_permission_bytes sh p n r' ->
+  (level r = m + level r')%nat ->
+  joins r rw -> joins r' rw' -> necR rw rw' ->
+  necR r r'.
+Proof.
+  intros.
+  rename H2 into Hjoin1.
+  rename H3 into Hjoin2. rename H4 into Hrw.
+  apply necR_power_age. exists m. 
+  revert r r' rw rw' H H0 H1 Hjoin1 Hjoin2 Hrw.
+  induction m;intros.
+  + simpl.
+    assert (rw = rw').
+    { destruct Hjoin1. destruct Hjoin2.
+      apply join_level  in H2. apply join_level in H3.
+      destruct H2, H3.
+      assert (level rw = level rw') by omega.
+      pose proof necR_refl rw.
+      pose proof necR_linear' H7 Hrw H6. auto. }
+    subst rw'.
+    eapply nonlock_permission_bytes_level_precise;eassumption.
+  + simpl in H1.
+    pose proof levelS_age1 _ _ H1. destruct H2 as [r'' H2].
+    exists r''. split;auto.
+    (* find rw'' *)
+    destruct Hjoin1 as [ra Hjoin1].
+    pose proof join_level _ _ _ Hjoin1.
+    destruct Hjoin2 as [ra' Hjoin2].
+    pose proof join_level _ _ _ Hjoin2.
+    pose proof age_level _ _ H2.
+    apply clos_rt_rt1n in Hrw.
+    inv Hrw. { omega. }
+    apply IHm with (rw:=y) (rw':=rw');auto.
+    2:{ apply age_level in H2. rewrite H1 in H2. inv H2. auto. }
+    { assert (necR r r'').
+      { constructor. apply H2. }
+      apply pred_nec_hereditary with (a:= r);auto. }
+    { pose proof join_necR_2 _ _ _ _ _ (rt_step _ _ _ _ H2) (rt_step _ _ _ _ H6) Hjoin1.
+      destruct H8 as [ra'' [? ?]]. { pose proof age_level _ _ H6. omega. }
+      exists ra''. auto. }
+    { exists ra'. auto. }
+    { apply clos_rt1n_rt. auto. }
+Qed.
+
+
+Lemma mapsto_precise: forall sh t v v2 P,
+  P |-- mapsto sh t v v2 -> v2 <> Vundef ->
+  P |-- mapsto sh t v v2 * (mapsto sh t v v2 -* P).
+Proof.
+  intros. rename H0 into Hundef.
+  assert (P |-- mapsto sh t v v2 *TT).
+  { eapply derives_trans. { apply normalize.sepcon_TT. }
+    apply sepcon_derives;auto.
+  }
+  unfold mapsto in *.
+  assert (Haux:  P |-- FF -> P |-- FF * (FF -* P)).
+  { hnf.  intros.
+    eapply derives_trans. apply H1.
+    apply FF_derives. }
+  destruct (access_mode t); auto.
+  destruct (type_is_volatile t); auto.
+  destruct v;auto. clear Haux. hnf.
+  intros r. intros.
+  pose proof H0 _ H1. if_tac in H2.
+  - hnf in H2. destruct H2 as [r_mapsto [r_rem [Hr [H2 _]]]].
+    hnf in H2. hnf. exists r_mapsto, r_rem.
+    repeat split;auto. hnf. intros r_rem' r_mapsto' r'.
+    intros. destruct H2.
+    + (* address mapsto *)
+      destruct H6.
+      * destruct H2. destruct H6.
+        simpl in H2. simpl in H6.
+        assert (v2 <> Vundef).
+        { intros C. subst. eapply tc_val_Vundef;eassumption. }
+        assert (necR r_mapsto r_mapsto').
+        { pose proof (proj1 (necR_power_age _ _)) H4.
+          destruct H10 as [n H4'].
+          pose proof relation_power_level _ _ _ H4'.
+          eapply address_mapsto_necR_precise with (n:=n);
+             try eassumption.
+          - apply join_level in Hr. apply join_level in H5. omega.
+          - eexists. apply Hr.
+          - eexists. apply join_comm. apply H5.
+         }
+         apply join_comm in H5.
+         pose proof join_necR _ _ _ _ _ _ H10 H4 Hr H5.
+         epose proof pred_nec_hereditary _ _ _ H11. auto.
+      * destruct H2. destruct H6. congruence.
+    + destruct H6.
+      * destruct H2. destruct H6. congruence.
+      * destruct H2. destruct H6. congruence.
+  - hnf in H2. destruct H2 as [r_mapsto [r_rem [Hr [H2 _]]]].
+    destruct H2 as [H2a H2b].
+    simpl in H2a. destruct H2a as [H2a1 H2a2].
+    exists r_mapsto, r_rem. split;auto. split.
+    { split;auto. simpl. auto. }
+    hnf. intros r_rem' r_mapsto' r'.
+    intros. destruct H5 as [H5a H5b].
+    assert (necR r_mapsto r_mapsto').
+    { pose proof (proj1 (necR_power_age _ _)) H2.
+      destruct H5 as [n H4'].
+      pose proof relation_power_level _ _ _ H4'.
+      eapply nonlock_permission_bytes_necR_precise with (m:=n);
+          try eassumption.
+      - apply join_level in Hr. apply join_level in H4. omega.
+      - eexists. apply Hr.
+      - eexists. apply join_comm. apply H4.
+      }
+      apply join_comm in H4.
+      pose proof join_necR _ _ _ _ _ _ H5 H2 Hr H4.
+      epose proof pred_nec_hereditary _ _ _ H6. auto.
 Qed.
 
 
